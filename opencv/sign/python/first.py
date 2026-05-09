@@ -46,6 +46,8 @@ while True:
                 y = int(landmark.y * frame.shape[0])
                 cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
+                
+
     cv2.imshow("Hand Tracking", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
