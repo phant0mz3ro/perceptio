@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from collections import deque
 
 # Path to model
 MODEL_PATH = "hand_landmarker.task"
@@ -20,9 +21,10 @@ options = HandLandmarkerOptions(
 
 # Create detector
 detector = HandLandmarker.create_from_options(options)
+history  =  deque(maxlen=7)
 
 
-url = "http://10.251.195.104:81/stream"
+url = "http://10.42.236.104:81/stream"
 cap = cv2.VideoCapture(url)
 #cap = cv2.VideoCapture(0)
 
@@ -96,13 +98,21 @@ while True:
             fingers_global = generate_positions(hand,labelHand)
             numIndex = getNumber(fingers_global)
             if numIndex != -1:
-                numValue = numbers[numIndex]
+                history.append(numIndex)
+                if len(history) > 0:
+                    stable_index = max(set(history),key=history.count)
+                    numValue = numbers[stable_index]
+                else: numValue = ""
+               # numValue = numbers[numIndex]
             else: numValue = ""
 
             for landmark in hand:
                 x = int(landmark.x * frame.shape[1])
                 y = int(landmark.y * frame.shape[0])
                 cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+    else:
+        history.clear()
+        numValue=""
    
        
     cv2.putText(frame,numValue,(30,30),cv2.FONT_HERSHEY_DUPLEX,1,(255,0,0),2)
