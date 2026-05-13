@@ -3,6 +3,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from collections import deque
+import time
 
 # Path to model
 MODEL_PATH = "hand_landmarker.task"
@@ -21,8 +22,13 @@ options = HandLandmarkerOptions(
 
 # Create detector
 detector = HandLandmarker.create_from_options(options)
-history  =  deque(maxlen=7)
+history  =  deque(maxlen=5)
 
+#time variables
+candidate = None
+hold_start = 0
+confirmed = ""
+HOLD_TIME = 0.5
 
 url = "http://10.42.236.104:81/stream"
 cap = cv2.VideoCapture(url)
@@ -74,7 +80,6 @@ def generate_positions(hand:list,lefti: bool):
 
 while True:
     fingers_global = None
-    numValue = ""
 
     ret, frame = cap.read()
     if not ret:
@@ -99,12 +104,17 @@ while True:
             numIndex = getNumber(fingers_global)
             if numIndex != -1:
                 history.append(numIndex)
-                if len(history) > 0:
-                    stable_index = max(set(history),key=history.count)
-                    numValue = numbers[stable_index]
-                else: numValue = ""
+                stable_index = max(set(history),key=history.count)
+                current_gesture = numbers[stable_index]
+
+                if current_gesture != candidate:
+                    candidate = current_gesture
+                    hold_start = time.time()
+
+                elif time.time() - hold_start>HOLD_TIME:
+                    confirmed = current_gesture
+
                # numValue = numbers[numIndex]
-            else: numValue = ""
 
             for landmark in hand:
                 x = int(landmark.x * frame.shape[1])
@@ -112,10 +122,11 @@ while True:
                 cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
     else:
         history.clear()
-        numValue=""
+        candidate = None
+        #confirmed = ""
    
        
-    cv2.putText(frame,numValue,(30,30),cv2.FONT_HERSHEY_DUPLEX,1,(255,0,0),2)
+    cv2.putText(frame,confirmed,(30,30),cv2.FONT_HERSHEY_DUPLEX,1,(255,0,0),2)
     cv2.imshow("Hand Tracking", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
