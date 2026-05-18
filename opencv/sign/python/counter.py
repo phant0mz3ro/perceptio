@@ -35,24 +35,40 @@ url = "http://10.42.236.104:81/stream"
 cap = cv2.VideoCapture(0)
 
 gesture_dict = {
+
+    # 👊 FIST
     "FIST": {
-        "fingers": [0,0,0,0],
-        "thumb_index_dist": {"max": 0.15}
+        "fingers": [0, 0, 0, 0],
+        "thumb_index_dist": {"max": 0.3}
     },
 
+    # ✋ OPEN PALM
     "OPEN_PALM": {
-        "fingers": [1,1,1,1],
+        "fingers": [1, 1, 1, 1],
+        "thumb_index_dist": {"min": 0.22},
+        "index_middle_dist": {"min": 0.20},
+        "middle_ring_dist": {"min": 0.20},
+        "ring_pinky_dist": {"min": 0.20}
+    },
+
+    # ✌ PEACE (index + middle up, others down)
+    "PEACE": {
+        "fingers": [1, 1, 0, 0],
+        "index_middle_dist": {"min": 0.18},
+        "middle_ring_dist": {"max": 0.18}
+    },
+
+    # 👍 THUMBS UP
+    "THUMBS_UP": {
+        "fingers": [0, 0, 0, 0],
+        "thumb": [0, 1],   # vertical up
         "thumb_index_dist": {"min": 0.25}
     },
 
-    "PEACE": {
-        "fingers": [1,1,0,0],
-        "index_middle_dist": {"min": 0.15}
-    },
-
-    "THUMBS_UP": {
-        "fingers": [0,0,0,0],
-        "thumb": [0,1]
+    # 👌 OK SIGN (optional but useful early sign language staple)
+    "OK": {
+        "fingers": [0, 1, 1, 1],
+        "thumb_index_dist": {"max": 0.2}
     }
 }
 
@@ -105,12 +121,22 @@ def normalize_distance(hand, p1, p2):
 def extract_features(hand:list,lefti: bool):
             fingers=[0,0,0,0]
             thumb = [0,0]
-
-            if hand[4].y < hand[3].y : thumb[1] = 1
+            """if hand[4].y < hand[3].y : thumb[1] = 1
             if lefti:
                 if  hand[4].x < hand[3].x : thumb[0] = 1
             else:
-                if  hand[4].x > hand[3].x : thumb[0] = 1
+                if  hand[4].x > hand[3].x : thumb[0] = 1"""
+            
+            thumb_tip = hand[4]
+            thumb_ip = hand[3]
+            thumb_mcp = hand[2]
+            wrist = hand[0]
+            thumb_vector_x = thumb_tip.x - wrist.x
+            thumb_vector_y = thumb_tip.y - wrist.y      
+            thumb = [
+                1 if thumb_vector_x > 0 else 0,
+                1 if thumb_vector_y < 0 else 0
+            ]
 
             # Index finger
             if hand[8].y < hand[6].y:
@@ -139,7 +165,10 @@ def extract_features(hand:list,lefti: bool):
                 "fingers": fingers,
                 "thumb": thumb,
                 "thumb_index_dist": thumb_index_dist,
-                "index_middle_dist": index_middle_dist
+                "index_middle_dist": index_middle_dist,
+                "middle_ring_dist": middle_ring_dist,
+                "ring_pinky_dist": ring_pinky_dist,
+
             }
 
 while True:
@@ -164,7 +193,6 @@ while True:
             gesture = match_gesture(features)
 
             if gesture is None: 
-                confirmed = ""
                 continue
 
             history.append(gesture)
